@@ -20,7 +20,7 @@ import dayjs from "dayjs";
 
   if (!process.env.MASTER_OTP) process.env.MASTER_OTP = "655251";
   if (!process.env.DUMMY_OTP_NUMBERS) {
-    process.env.DUMMY_OTP_NUMBERS = "9999990001,9999990002,9999990003,9999990004";
+    process.env.DUMMY_OTP_NUMBERS = "9999990001,9999990002,9999990003,9999990004,9999990005,9999990006,9999990007";
   }
 })();
 
@@ -41,7 +41,7 @@ const config = {
   masterOtp: process.env.MASTER_OTP as string,
   dummyOtpNumbers: process.env.DUMMY_OTP_NUMBERS
     ? process.env.DUMMY_OTP_NUMBERS.split(",").map((n) => n.trim())
-    : ["9999990001", "9999990002", "9999990003", "9999990004"],
+    : ["9999990001", "9999990002", "9999990003", "9999990004", "9999990005", "9999990006", "9999990007"],
   client: process.env.CLIENT as string,
 };
 

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Button,
   Input,
+  Modal,
   Popconfirm,
   Select,
   Switch,
@@ -16,6 +18,7 @@ import { useSelector } from "react-redux";
 import usersApi from "@/axios/users";
 import batchesApi, { type BatchRecord } from "@/axios/batches";
 import { useMessage } from "@/components/layout";
+import FamilyTree, { type FamilyTreeData } from "@/components/family-tree";
 import type { RootState } from "@/redux/store";
 
 const { Title, Text } = Typography;
@@ -26,6 +29,7 @@ type PersonRecord = {
   mobileNumber: string;
   uniqueCode: string;
   email: string;
+  role: string;
   isActive: boolean;
   feesPaid: boolean;
   batch: {
@@ -57,6 +61,9 @@ export default function PeopleModule() {
   const [batchFilter, setBatchFilter] = useState<string | undefined>();
   const [activeFilter, setActiveFilter] = useState<string | undefined>();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [treePerson, setTreePerson] = useState<PersonRecord | null>(null);
+  const [tree, setTree] = useState<FamilyTreeData | null>(null);
+  const [treeLoading, setTreeLoading] = useState(false);
 
   const loadBatches = useCallback(async () => {
     if (!allowed) return;
@@ -135,9 +142,51 @@ export default function PeopleModule() {
     [load, message]
   );
 
+  const openTree = useCallback(
+    async (person: PersonRecord) => {
+      setTreePerson(person);
+      setTree(null);
+      setTreeLoading(true);
+      try {
+        const response = await usersApi.personFamilyTree(person.id);
+        if (response.success) {
+          setTree(response.data || null);
+        } else {
+          message.error(response.error || "Failed to load family tree");
+          setTreePerson(null);
+        }
+      } catch (error) {
+        const err = error as { message?: string };
+        message.error(err.message || "Failed to load family tree");
+        setTreePerson(null);
+      } finally {
+        setTreeLoading(false);
+      }
+    },
+    [message]
+  );
+
+  const closeTree = useCallback(() => {
+    setTreePerson(null);
+    setTree(null);
+  }, []);
+
+  const hasFamily = Boolean(
+    tree?.grandparent || tree?.parent || tree?.guardian || tree?.student
+  );
+
   const columns: ColumnsType<PersonRecord> = useMemo(
     () => [
       { title: "Name", dataIndex: "name", key: "name" },
+      {
+        title: "Role",
+        dataIndex: "role",
+        key: "role",
+        width: 130,
+        render: (value: string) => (
+          <Tag>{value ? value.charAt(0).toUpperCase() + value.slice(1) : "User"}</Tag>
+        ),
+      },
       { title: "Unique code", dataIndex: "uniqueCode", key: "uniqueCode" },
       { title: "Mobile", dataIndex: "mobileNumber", key: "mobileNumber" },
       {
@@ -195,8 +244,18 @@ export default function PeopleModule() {
           </Popconfirm>
         ),
       },
+      {
+        title: "Tree",
+        key: "tree",
+        width: 110,
+        render: (_, record) => (
+          <Button type="link" onClick={() => openTree(record)} style={{ padding: 0 }}>
+            View tree
+          </Button>
+        ),
+      },
     ],
-    [batches, updatePerson, updatingId]
+    [batches, openTree, updatePerson, updatingId]
   );
 
   if (!allowed) {
@@ -209,7 +268,7 @@ export default function PeopleModule() {
         Manage People
       </Title>
       <Text type="secondary">
-        Activate, deactivate, and move players between batches
+        Activate, deactivate, and move academy members between batches
       </Text>
 
       <div
@@ -283,8 +342,29 @@ export default function PeopleModule() {
             setPageSize(nextPageSize);
           },
         }}
-        scroll={{ x: 880 }}
+        scroll={{ x: 980 }}
       />
+
+      <Modal
+        open={Boolean(treePerson)}
+        title={
+          treePerson
+            ? `Family hierarchy · ${treePerson.name}`
+            : "Family hierarchy"
+        }
+        onCancel={closeTree}
+        footer={null}
+        width={640}
+        centered
+      >
+        {treeLoading ? (
+          <Text type="secondary">Loading tree...</Text>
+        ) : hasFamily && tree ? (
+          <FamilyTree tree={tree} highlightYou={false} />
+        ) : (
+          <Text type="secondary">No family hierarchy linked for this person.</Text>
+        )}
+      </Modal>
     </div>
   );
 }

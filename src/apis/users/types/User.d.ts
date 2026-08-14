@@ -39,6 +39,10 @@ export default interface IUser extends Document {
   shifts?: Types.ObjectId[];
   shiftSections?: Types.ObjectId[];
   cities?: string[];
+  parentId?: Types.ObjectId;
+  guardianId?: Types.ObjectId;
+  guardianOf?: Types.ObjectId[];
+  children?: Types.ObjectId[];
 
   // Methods
   setPassword: (this: IUser, password: string) => void;

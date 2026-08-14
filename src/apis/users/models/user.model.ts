@@ -242,6 +242,17 @@ const schema = new Schema<any>(
       ref: "users",
       index: true,
     },
+    guardianId: {
+      type: Schema.Types.ObjectId,
+      ref: "users",
+      index: true,
+    },
+    guardianOf: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "users",
+      },
+    ],
     children: [
       {
         type: Schema.Types.ObjectId,

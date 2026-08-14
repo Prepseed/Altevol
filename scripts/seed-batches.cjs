@@ -48,7 +48,7 @@ async function main() {
   const cricket1 = await collection.findOne({ name: "Cricket 1", client });
   if (cricket1) {
     await users.updateOne(
-      { uniqueCode: "SRT10-001", client, role: "user" },
+      { uniqueCode: "SRT10-001", client },
       { $set: { batch: cricket1._id, updatedAt: new Date() } }
     );
   }

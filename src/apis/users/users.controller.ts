@@ -16,6 +16,7 @@ import CheckInModel from "./models/checkIn.model";
 import BatchModel from "../batches/models/batch.model";
 import EntryFormModel from "../entry-form/models/entryForm.model";
 import config from "@/config/config";
+import { isFamilyRole, isMemberRole, MEMBER_ROLES } from "@/lib/roles";
 
 function parseMobile(mobileNumber: string) {
   let countryCode = 91;
@@ -453,9 +454,9 @@ export const checkIn = async (req: NextRequest) => {
       );
     }
 
-    if (user.role !== "user") {
+    if (!isMemberRole(user.role)) {
       return NextResponse.json(
-        { success: false, error: "Check-in is only for users" },
+        { success: false, error: "Check-in is only for academy members" },
         { status: 400 }
       );
     }
@@ -684,12 +685,199 @@ export const listMyCheckIns = async (req: NextRequest) => {
   }
 };
 
+type FamilyDoc = {
+  _id: Types.ObjectId;
+  name?: string;
+  uniqueCode?: string;
+  role?: string;
+  parentId?: Types.ObjectId;
+  guardianId?: Types.ObjectId;
+  guardianOf?: Types.ObjectId[];
+  children?: Types.ObjectId[];
+};
+
+const FAMILY_FIELDS =
+  "name uniqueCode role parentId guardianId guardianOf children";
+
+function toFamilyNode(doc: FamilyDoc | null) {
+  if (!doc) return null;
+  return {
+    id: String(doc._id),
+    name: doc.name || "",
+    uniqueCode: doc.uniqueCode || "",
+    role: doc.role || "",
+  };
+}
+
+async function loadFamilyMember(id?: Types.ObjectId | string | null) {
+  if (!id || !Types.ObjectId.isValid(String(id))) return null;
+  return UserModel.findById(id).select(FAMILY_FIELDS).lean<FamilyDoc>();
+}
+
+async function resolveFamilyTree(me: FamilyDoc) {
+  let student: FamilyDoc | null = me.role === "student" ? me : null;
+  let parent: FamilyDoc | null = me.role === "parent" ? me : null;
+  let grandparent: FamilyDoc | null = me.role === "grandparent" ? me : null;
+  let guardian: FamilyDoc | null = me.role === "guardian" ? me : null;
+
+  for (let hop = 0; hop < 4; hop += 1) {
+    if (!parent && student?.parentId) {
+      parent = await loadFamilyMember(student.parentId);
+    }
+    if (!grandparent && parent?.parentId) {
+      grandparent = await loadFamilyMember(parent.parentId);
+    }
+    if (!student && parent) {
+      const childId = parent.children?.[0];
+      student = childId
+        ? await loadFamilyMember(childId)
+        : await UserModel.findOne({
+            parentId: parent._id,
+            role: { $in: ["student", "user"] },
+          })
+            .select(FAMILY_FIELDS)
+            .lean<FamilyDoc>();
+    }
+    if (!parent && grandparent) {
+      const childId = grandparent.children?.[0];
+      parent = childId
+        ? await loadFamilyMember(childId)
+        : await UserModel.findOne({
+            parentId: grandparent._id,
+            role: "parent",
+          })
+            .select(FAMILY_FIELDS)
+            .lean<FamilyDoc>();
+    }
+    if (!guardian && student?.guardianId) {
+      guardian = await loadFamilyMember(student.guardianId);
+    }
+    if (!student && guardian) {
+      const studentId = guardian.guardianOf?.[0];
+      student = studentId
+        ? await loadFamilyMember(studentId)
+        : await UserModel.findOne({ guardianId: guardian._id })
+            .select(FAMILY_FIELDS)
+            .lean<FamilyDoc>();
+    }
+  }
+
+  return {
+    grandparent: toFamilyNode(grandparent),
+    parent: toFamilyNode(parent),
+    guardian: toFamilyNode(guardian),
+    student: toFamilyNode(student),
+    youId: String(me._id),
+  };
+}
+
+export const getFamilyTree = async (req: NextRequest) => {
+  try {
+    const auth = await isAuthRequired(req);
+    if (!auth.success || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const me = await UserModel.findById(auth.user.id)
+      .select(FAMILY_FIELDS)
+      .lean<FamilyDoc>();
+
+    if (!me || !isFamilyRole(me.role)) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          grandparent: null,
+          parent: null,
+          guardian: null,
+          student: null,
+          youId: String(auth.user.id),
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: await resolveFamilyTree(me),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to load family tree";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+};
+
+export const getPersonFamilyTree = async (req: NextRequest, id: string) => {
+  try {
+    const auth = await isAuthRequired(req);
+    if (!auth.success || !auth.user) {
+      return NextResponse.json(
+        { success: false, error: auth.error || "Not authenticated" },
+        { status: 401 }
+      );
+    }
+    if (auth.user.role !== "admin" && auth.user.role !== "super") {
+      return NextResponse.json(
+        { success: false, error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    if (!Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid user id" },
+        { status: 400 }
+      );
+    }
+
+    const person = await UserModel.findOne({
+      _id: id,
+      client: new Types.ObjectId(config.client),
+      isArchived: { $ne: true },
+    })
+      .select(FAMILY_FIELDS)
+      .lean<FamilyDoc>();
+
+    if (!person) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!isFamilyRole(person.role)) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          grandparent: null,
+          parent: null,
+          guardian: null,
+          student: null,
+          youId: String(person._id),
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: await resolveFamilyTree(person),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to load family tree";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+};
+
 function serializePerson(doc: {
   _id: Types.ObjectId;
   name?: string;
   mobileNumber?: string;
   email?: string;
   uniqueCode?: string;
+  role?: string;
   isActive?: boolean;
   feesPaid?: boolean | number;
   batch?: {
@@ -717,6 +905,7 @@ function serializePerson(doc: {
     mobileNumber: doc.mobileNumber || "",
     email: doc.email || "",
     uniqueCode: doc.uniqueCode || "",
+    role: doc.role || "user",
     isActive: doc.isActive !== false,
     feesPaid: isFeesPaid(doc.feesPaid),
     batch,
@@ -752,7 +941,7 @@ export const listPeople = async (req: NextRequest) => {
     const client = new Types.ObjectId(config.client);
     const filter: Record<string, unknown> = {
       client,
-      role: "user",
+      role: { $in: [...MEMBER_ROLES] },
       isArchived: { $ne: true },
     };
 
@@ -780,7 +969,7 @@ export const listPeople = async (req: NextRequest) => {
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .populate("batch", "name sport startTime endTime")
-        .select("name mobileNumber email uniqueCode isActive feesPaid batch")
+        .select("name mobileNumber email uniqueCode role isActive feesPaid batch")
         .lean(),
       UserModel.countDocuments(filter),
     ]);
@@ -828,7 +1017,7 @@ export const updatePerson = async (req: NextRequest, id: string) => {
     const person = await UserModel.findOne({
       _id: id,
       client,
-      role: "user",
+      role: { $in: [...MEMBER_ROLES] },
       isArchived: { $ne: true },
     });
 
@@ -912,7 +1101,7 @@ export const getDashboardStats = async (req: NextRequest) => {
     const startOfToday = dayjs().startOf("day").toDate();
     const peopleFilter = {
       client,
-      role: "user",
+      role: { $in: [...MEMBER_ROLES] },
       isArchived: { $ne: true },
     };
 

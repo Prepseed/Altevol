@@ -4,6 +4,7 @@ import { getBody, isAuthRequired } from "../utils/request";
 import BatchModel from "./models/batch.model";
 import UserModel from "../users/models/user.model";
 import config from "@/config/config";
+import { PLAYER_ROLES } from "@/lib/roles";
 
 const SPORTS = ["cricket", "tennis"] as const;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -93,7 +94,7 @@ export const listBatches = async (req: NextRequest) => {
       {
         $match: {
           client,
-          role: "user",
+          role: { $in: [...PLAYER_ROLES] },
           batch: { $in: batches.map((batch) => batch._id) },
         },
       },
@@ -279,7 +280,7 @@ export const updateBatch = async (req: NextRequest, id: string) => {
     await batch.save();
     const userCount = await UserModel.countDocuments({
       client,
-      role: "user",
+      role: { $in: [...PLAYER_ROLES] },
       batch: batch._id,
     });
 
@@ -324,7 +325,7 @@ export const deleteBatch = async (req: NextRequest, id: string) => {
 
     const userCount = await UserModel.countDocuments({
       client,
-      role: "user",
+      role: { $in: [...PLAYER_ROLES] },
       batch: batch._id,
     });
 

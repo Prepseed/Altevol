@@ -7,7 +7,9 @@ import branding from "@/config/branding";
 import type { RootState } from "@/redux/store";
 import usersApi from "@/axios/users";
 import AdminDashboard from "@/components/admin-dashboard";
+import FamilyTree, { type FamilyTreeData } from "@/components/family-tree";
 import { useMessage } from "@/components/layout";
+import { isFamilyRole, isMemberRole } from "@/lib/roles";
 
 const { Title, Text } = Typography;
 
@@ -79,7 +81,9 @@ export default function DashboardPage() {
   const uniqueCode =
     typeof userData.uniqueCode === "string" ? userData.uniqueCode : "";
   const batch = readUserBatch(userData.batch);
-  const showQr = role === "user" && Boolean(uniqueCode);
+  const isMember = isMemberRole(role);
+  const showFamily = isFamilyRole(role);
+  const showQr = isMember && Boolean(uniqueCode);
   const [checkingIn, setCheckingIn] = useState(false);
   const [scanCode, setScanCode] = useState("");
   const [logsLoading, setLogsLoading] = useState(false);
@@ -87,9 +91,10 @@ export default function DashboardPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [familyTree, setFamilyTree] = useState<FamilyTreeData | null>(null);
 
   const loadMyCheckIns = useCallback(async () => {
-    if (role !== "user") return;
+    if (!isMember) return;
     setLogsLoading(true);
     try {
       const response = await usersApi.listMyCheckIns({ page, pageSize });
@@ -105,11 +110,26 @@ export default function DashboardPage() {
     } finally {
       setLogsLoading(false);
     }
-  }, [message, page, pageSize, role]);
+  }, [isMember, message, page, pageSize]);
+
+  const loadFamilyTree = useCallback(async () => {
+    if (!showFamily) {
+      setFamilyTree(null);
+      return;
+    }
+    const response = await usersApi.familyTree();
+    if (response.success) {
+      setFamilyTree(response.data || null);
+    }
+  }, [showFamily]);
 
   useEffect(() => {
     loadMyCheckIns();
   }, [loadMyCheckIns]);
+
+  useEffect(() => {
+    loadFamilyTree();
+  }, [loadFamilyTree]);
 
   const handleCheckIn = async (codeToCheckIn = uniqueCode) => {
     if (!codeToCheckIn || checkingIn) return;
@@ -122,7 +142,7 @@ export default function DashboardPage() {
             ? `${response.data?.name || codeToCheckIn} already checked in today`
             : response.message || "Checked in"
         );
-        if (role === "user") {
+        if (isMember) {
           if (page === 1) {
             await loadMyCheckIns();
           } else {
@@ -152,6 +172,8 @@ export default function DashboardPage() {
       <Text type="secondary">{branding.dashboard.subtitle}</Text>
 
       {(role === "admin" || role === "super") && <AdminDashboard />}
+
+      {showFamily && familyTree ? <FamilyTree tree={familyTree} /> : null}
 
       {showQr && (
         <div
@@ -254,7 +276,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {role === "user" && (
+      {isMember && (
         <div style={{ marginTop: 40 }}>
           <Title level={4} style={{ marginBottom: 4 }}>
             My check-ins

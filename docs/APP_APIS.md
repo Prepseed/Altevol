@@ -123,7 +123,9 @@ Store `token` and send it as `Authorization: Token <jwt>` on later calls.
 }
 ```
 
-For `role: user`, `batch` is the assigned academy batch (or `null` if not assigned). Admin/guard usually have `batch: null`.
+For `role: user` / `student` / `parent` / `grandparent` / `guardian`, `batch` is the assigned academy batch (or `null` if not assigned). Admin/guard usually have `batch: null`.
+
+Family roles (`student`, `parent`, `grandparent`, `guardian`) also get a dashboard family tree via `GET /users/family-tree`. Tennis dummy `SRT10-002` stays `role: user` and has no tree.
 
 ---
 
@@ -306,7 +308,7 @@ Query params:
 
 `POST /users/check-in`
 
-**Auth:** required (`guard`, `admin`, or `super` to scan another person; a `user` can only check in themselves)
+**Auth:** required (`guard`, `admin`, or `super` to scan another person; academy members — `user`, `student`, `parent`, `grandparent`, `guardian` — can check in themselves)
 
 The guard app logs in, scans the player QR (`uniqueCode`), then calls this API.
 
@@ -402,11 +404,11 @@ On the web user dashboard, clicking the QR also calls this same API so check-in 
 
 `items` is the full log till date. `recent` is the latest 10 check-ins for the side panel.
 
-### My check-ins (user)
+### My check-ins
 
 `GET /users/check-ins/me?page=1&pageSize=10`
 
-**Auth:** required. Returns **only the logged-in user's** check-in logs.
+**Auth:** required. Returns **only the logged-in member's** check-in logs.
 
 **Success**
 
@@ -418,7 +420,7 @@ On the web user dashboard, clicking the QR also calls this same API so check-in 
       {
         "id": "...",
         "userId": "...",
-        "name": "Altevol User",
+        "name": "Altevol Student",
         "uniqueCode": "SRT10-001",
         "feesPaid": true,
         "checkin": "2026-08-14T09:05:00.000Z"
@@ -430,6 +432,61 @@ On the web user dashboard, clicking the QR also calls this same API so check-in 
   }
 }
 ```
+
+---
+
+### Family tree
+
+`GET /users/family-tree`
+
+**Auth:** required. For family roles (`student`, `parent`, `grandparent`, `guardian`) returns the linked family. Other roles get empty nodes.
+
+**Success**
+
+```json
+{
+  "success": true,
+  "data": {
+    "grandparent": {
+      "id": "...",
+      "name": "Altevol Grandparent",
+      "uniqueCode": "SRT10-grandparent-001",
+      "role": "grandparent"
+    },
+    "parent": {
+      "id": "...",
+      "name": "Altevol Parent",
+      "uniqueCode": "SRT10-parent-001",
+      "role": "parent"
+    },
+    "guardian": {
+      "id": "...",
+      "name": "Altevol Guardian",
+      "uniqueCode": "SRT10-guardian-001",
+      "role": "guardian"
+    },
+    "student": {
+      "id": "...",
+      "name": "Altevol Student",
+      "uniqueCode": "SRT10-001",
+      "role": "student"
+    },
+    "youId": "..."
+  }
+}
+```
+
+Highlight the node whose `id` matches `youId`.
+
+---
+
+### Family tree for a person (admin)
+
+`GET /users/people/:id/family-tree`
+
+**Auth:** required (`admin` or `super`)
+
+Same payload as `GET /users/family-tree`, resolved for that person. Used by Manage People → **View tree**. The admin UI shows the tree without highlighting a “you are here” node.
 
 ---
 
@@ -536,9 +593,14 @@ Lists `role: user` only. Inactive users cannot login. Inactive also sets `feesPa
 | Role | Unique code | Mobile | OTP |
 |---|---|---|---|
 | admin | `SRT10-admin-001` | `9999990001` | `123456` or `655251` |
-| user (Cricket 1) | `SRT10-001` | `9999990002` | `123456` or `655251` |
+| student (Cricket 1 child) | `SRT10-001` | `9999990002` | `123456` or `655251` |
 | guard | `SRT10-guard-001` | `9999990003` | `123456` or `655251` |
 | user (Tennis 1) | `SRT10-002` | `9999990004` | `123456` or `655251` |
+| grandparent | `SRT10-grandparent-001` | `9999990005` | `123456` or `655251` |
+| parent | `SRT10-parent-001` | `9999990006` | `123456` or `655251` |
+| guardian | `SRT10-guardian-001` | `9999990007` | `123456` or `655251` |
+
+The Cricket 1 family tree is **grandparent → parent → student**, with guardian linked beside the parent. Logging in as any of those four highlights that person’s node on the dashboard.
 
 Guard is for the scanner app. Login with `9999990003`, then `POST /users/check-in` with the scanned player's `uniqueCode`.
 
@@ -558,4 +620,10 @@ Seed default batches and assign dummy user `SRT10-001` to Cricket 1:
 
 ```bash
 npm run seed:batches
+```
+
+Create / refresh the family hierarchy (uses Cricket 1 `SRT10-001` as the student):
+
+```bash
+npm run seed:family
 ```

@@ -11,10 +11,10 @@ const dummyUsers = [
     uniqueCode: "SRT10-admin-001",
   },
   {
-    name: "Altevol User",
+    name: "Altevol Student",
     email: "altevol.user@dummy.local",
     mobileNumber: "9999990002",
-    role: "user",
+    role: "student",
     uniqueCode: "SRT10-001",
   },
   {

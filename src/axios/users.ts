@@ -85,6 +85,16 @@ const usersApi = {
       .get("/dashboard")
       .then((res) => res.data)
       .catch((error) => fallback(error, "Failed to load dashboard")),
+  familyTree: () =>
+    api
+      .get("/family-tree")
+      .then((res) => res.data)
+      .catch((error) => fallback(error, "Failed to load family tree")),
+  personFamilyTree: (id: string) =>
+    api
+      .get(`/people/${id}/family-tree`)
+      .then((res) => res.data)
+      .catch((error) => fallback(error, "Failed to load family tree")),
 };
 
 export default usersApi;

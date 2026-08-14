@@ -8,6 +8,8 @@ import {
   checkIn,
   listCheckIns,
   listMyCheckIns,
+  getFamilyTree,
+  getPersonFamilyTree,
   listPeople,
   updatePerson,
   getDashboardStats,
@@ -53,8 +55,17 @@ export default function getUsersRoutes(req: NextRequest, path: string) {
     return getDashboardStats(req);
   }
 
+  if (route === "/family-tree" && req.method === "GET") {
+    return getFamilyTree(req);
+  }
+
   if (route === "/people" && req.method === "GET") {
     return listPeople(req);
+  }
+
+  const personTree = route.match(/^\/people\/([^/]+)\/family-tree$/);
+  if (personTree && req.method === "GET") {
+    return getPersonFamilyTree(req, personTree[1]);
   }
 
   if (route.startsWith("/people/") && req.method === "PATCH") {

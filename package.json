@@ -10,7 +10,8 @@
     "seed:guard": "node --env-file=.env scripts/seed-guard.cjs",
     "seed:tennis-user": "node --env-file=.env scripts/seed-tennis-user.cjs",
     "seed:dummy-users": "node --env-file=.env scripts/seed-dummy-users.cjs",
-    "seed:batches": "node --env-file=.env scripts/seed-batches.cjs"
+    "seed:batches": "node --env-file=.env scripts/seed-batches.cjs",
+    "seed:family": "node --env-file=.env scripts/seed-family.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",
