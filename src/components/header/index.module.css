@@ -1,0 +1,47 @@
+.header {
+  background: #ffffff;
+  padding: 0 16px;
+  height: 64px;
+  line-height: 64px;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+  padding-left: 56px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menuButton {
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 16px;
+  z-index: 1;
+}
+
+.logo {
+  height: 44px;
+  max-width: calc(100% - 72px);
+  width: auto;
+  object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .header {
+    display: none;
+  }
+}

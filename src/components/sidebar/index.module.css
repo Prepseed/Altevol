@@ -1,0 +1,80 @@
+.sider {
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sider :global(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sider :global(.ant-menu) {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 767px) {
+  .sider {
+    display: none;
+  }
+}
+
+.logoContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  min-height: 72px;
+}
+
+.logoContainerCollapsed {
+  justify-content: center;
+  padding: 16px 8px;
+}
+
+.logoContainerExpanded {
+  justify-content: center;
+  padding: 8px;
+}
+
+.collapseBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.collapseBarCollapsed {
+  justify-content: center;
+  padding: 8px;
+}
+
+.collapseToggle {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 4px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #1B4F9C !important;
+  font-size: 14px !important;
+}
+
+.collapseToggle:hover,
+.collapseToggle:focus {
+  color: #123A75 !important;
+  background: transparent !important;
+}

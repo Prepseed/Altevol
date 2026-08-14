@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is the **Altevol** admin app for SRT10 Centre of Excellence.
+
+App / mobile APIs are documented in [`docs/APP_APIS.md`](docs/APP_APIS.md). Update that file whenever a new API is added.
 
 ## Getting Started
 
